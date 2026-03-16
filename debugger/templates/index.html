@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CJanus Web Debugger</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>CJanus Web Debugger</h1>
+    <span id="status-badge" class="badge badge-stopped">停止中</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Load panel ── -->
+  <section class="panel load-panel">
+    <label for="file-input">CRL ファイル</label>
+    <div class="load-row">
+      <input id="file-input" type="text"
+             placeholder="../CJanus-IPSJPRO25-3/progs/fib.crl"
+             spellcheck="false" />
+      <button id="btn-load" onclick="loadFile()">Load</button>
+    </div>
+    <div id="load-msg" class="load-msg"></div>
+  </section>
+
+  <!-- ── Controls ── -->
+  <section class="panel controls-panel">
+    <div class="control-row">
+      <button id="btn-fwd" class="btn-primary" onclick="sendCmd('fwd_run')"
+              title="順方向モードにして実行">&#9654; Forward</button>
+      <button id="btn-bwd" class="btn-secondary" onclick="sendCmd('bwd_run')"
+              title="逆方向モードにして実行">&#9664; Backward</button>
+      <button id="btn-run" onclick="sendCmd('run')"
+              title="現在の方向で実行">&#9193; Run</button>
+      <button id="btn-var" onclick="refreshVars()"
+              title="変数を更新">&#128196; Vars</button>
+      <button id="btn-dag" onclick="sendCmd('dag')"
+              title="DAG 表示">DAG</button>
+      <button id="btn-deldag" onclick="sendCmd('deldag')"
+              title="DAG を削除">Del DAG</button>
+    </div>
+    <div class="phase-row">
+      方向: <span id="phase-label" class="phase-tag phase-fwd">forward</span>
+      &nbsp;|&nbsp;
+      状態: <span id="running-label" class="running-tag">stopped</span>
+    </div>
+  </section>
+
+  <!-- ── Main area: source + variables ── -->
+  <div class="split-area">
+
+    <!-- Source panel -->
+    <section class="panel source-panel">
+      <h2>CRL ソース</h2>
+      <div id="source-file" class="source-filename">— ファイル未ロード —</div>
+      <pre id="source-view" class="source-view"><span class="placeholder">ファイルをロードしてください</span></pre>
+    </section>
+
+    <!-- Variables panel -->
+    <section class="panel vars-panel">
+      <h2>変数 / メモリ</h2>
+      <div id="vars-view" class="vars-view">
+        <p class="placeholder">ファイルをロードしてください</p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ── Output log ── -->
+  <section class="panel output-panel">
+    <div class="output-header">
+      <h2>出力ログ</h2>
+      <button onclick="clearOutput()" class="btn-small">クリア</button>
+    </div>
+    <pre id="output-log" class="output-log"></pre>
+  </section>
+
+</main>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let pollInterval = null;
+let lastOutputLength = 0;
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function setButtonsDisabled(disabled) {
+  ['btn-fwd','btn-bwd','btn-run','btn-var','btn-dag','btn-deldag'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+function showLoadMsg(msg, isError) {
+  const el = document.getElementById('load-msg');
+  el.textContent = msg;
+  el.className = 'load-msg ' + (isError ? 'load-error' : 'load-ok');
+}
+
+function clearOutput() {
+  document.getElementById('output-log').textContent = '';
+  lastOutputLength = 0;
+}
+
+// ─────────────────────────────────────────────
+// Load
+// ─────────────────────────────────────────────
+async function loadFile() {
+  const path = document.getElementById('file-input').value.trim();
+  if (!path) { showLoadMsg('ファイルパスを入力してください', true); return; }
+
+  showLoadMsg('ロード中...', false);
+  setButtonsDisabled(true);
+
+  try {
+    const res = await fetch('/load', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({file: path})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showLoadMsg('ロード完了: ' + data.file, false);
+      await refreshSource();
+      await refreshVars();
+      startPolling();
+      setButtonsDisabled(false);
+    } else {
+      showLoadMsg('エラー: ' + data.error, true);
+      setButtonsDisabled(true);
+    }
+  } catch(e) {
+    showLoadMsg('通信エラー: ' + e.message, true);
+    setButtonsDisabled(true);
+  }
+}
+
+// ─────────────────────────────────────────────
+// Commands
+// ─────────────────────────────────────────────
+async function sendCmd(cmd) {
+  // fwd_run / bwd_run are convenience composites
+  if (cmd === 'fwd_run') {
+    await _sendOne('fwd');
+    await _sendOne('run');
+    return;
+  }
+  if (cmd === 'bwd_run') {
+    await _sendOne('bwd');
+    await _sendOne('run');
+    return;
+  }
+  await _sendOne(cmd);
+}
+
+async function _sendOne(cmd) {
+  try {
+    const res = await fetch('/command', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({cmd})
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      appendOutput('ERROR: ' + data.error);
+    }
+  } catch(e) {
+    appendOutput('通信エラー: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+// State polling
+// ─────────────────────────────────────────────
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(pollState, 800);
+}
+
+async function pollState() {
+  try {
+    const res = await fetch('/state');
+    const data = await res.json();
+    updateUI(data);
+  } catch(_) { /* ignore network glitches */ }
+}
+
+function updateUI(data) {
+  // Status badge — use "executing" for precise CJanus worker status
+  const badge = document.getElementById('status-badge');
+  if (data.executing) {
+    badge.textContent = '実行中';
+    badge.className = 'badge badge-running';
+  } else if (data.loaded) {
+    badge.textContent = '一時停止';
+    badge.className = 'badge badge-stopped';
+  } else {
+    badge.textContent = '未ロード';
+    badge.className = 'badge badge-stopped';
+  }
+
+  // Phase
+  const phaseEl = document.getElementById('phase-label');
+  phaseEl.textContent = data.phase || 'stopped';
+  phaseEl.className = 'phase-tag ' +
+    (data.phase === 'forward' ? 'phase-fwd' :
+     data.phase === 'backward' ? 'phase-bwd' : 'phase-stop');
+
+  // Running label
+  document.getElementById('running-label').textContent =
+    data.executing ? '実行中' : '待機中';
+
+  // Output log — only append new lines
+  const newLines = (data.output || []).slice(lastOutputLength);
+  if (newLines.length > 0) {
+    newLines.forEach(line => appendOutput(line));
+    lastOutputLength = data.output.length;
+  }
+}
+
+function appendOutput(line) {
+  const log = document.getElementById('output-log');
+  log.textContent += line + '\n';
+  log.scrollTop = log.scrollHeight;
+}
+
+// ─────────────────────────────────────────────
+// Source
+// ─────────────────────────────────────────────
+async function refreshSource() {
+  try {
+    const res = await fetch('/source');
+    const data = await res.json();
+    document.getElementById('source-file').textContent = data.file || '—';
+    const view = document.getElementById('source-view');
+    if (data.lines && data.lines.length > 0) {
+      view.textContent = data.lines.join('\n');
+    } else {
+      view.innerHTML = '<span class="placeholder">ソースなし</span>';
+    }
+  } catch(e) {
+    document.getElementById('source-view').textContent = 'エラー: ' + e.message;
+  }
+}
+
+// ─────────────────────────────────────────────
+// Variables
+// ─────────────────────────────────────────────
+async function refreshVars() {
+  const container = document.getElementById('vars-view');
+  try {
+    const res = await fetch('/vars');
+    const data = await res.json();
+    if (!data.ok) {
+      container.innerHTML = '<p class="placeholder">' + data.error + '</p>';
+      return;
+    }
+
+    let html = '';
+
+    // Named variables from alloctable
+    const varEntries = Object.entries(data.vars || {});
+    if (varEntries.length > 0) {
+      html += '<table class="vars-table"><thead><tr><th>変数名</th><th>アドレス</th><th>値</th></tr></thead><tbody>';
+      for (const [name, info] of varEntries) {
+        html += `<tr><td class="var-name">${escHtml(name)}</td><td class="var-addr">${escHtml(info.addr)}</td><td class="var-val">${info.value}</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+
+    // Heap memory array
+    const heap = data.heap || [];
+    if (heap.length > 0) {
+      html += '<div class="heap-section"><strong>ヒープ M[]</strong><div class="heap-grid">';
+      heap.forEach((v, i) => {
+        html += `<div class="heap-cell"><span class="heap-idx">M[${i}]</span><span class="heap-val">${v}</span></div>`;
+      });
+      html += '</div></div>';
+    }
+
+    if (!html) {
+      html = '<p class="placeholder">変数なし（実行後に Vars ボタンを押してください）</p>';
+    }
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<p class="placeholder">エラー: ' + e.message + '</p>';
+  }
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ─────────────────────────────────────────────
+// Init — disable buttons until a file is loaded
+// ─────────────────────────────────────────────
+window.onload = function() {
+  setButtonsDisabled(true);
+  // If a file was pre-loaded via --file flag, fetch initial state
+  fetch('/state').then(r => r.json()).then(data => {
+    if (data.loaded) {
+      showLoadMsg('ロード済み: ' + data.crl_file, false);
+      refreshSource();
+      refreshVars();
+      startPolling();
+      setButtonsDisabled(false);
+      updateUI(data);
+      lastOutputLength = (data.output || []).length;
+      (data.output || []).forEach(line => appendOutput(line));
+    }
+  }).catch(() => {});
+};
+</script>
+
+</body>
+</html>

@@ -1,0 +1,300 @@
+/* ============================================================
+   CJanus Web Debugger — スタイルシート
+   プライマリカラー: #2e3092
+   ============================================================ */
+
+:root {
+  --primary:      #2e3092;
+  --primary-dark: #1e2070;
+  --primary-light:#4a4db0;
+  --accent:       #e8a000;
+  --bg:           #f5f6fa;
+  --surface:      #ffffff;
+  --border:       #dde1ee;
+  --text:         #1a1a2e;
+  --text-muted:   #6b7280;
+  --success:      #16a34a;
+  --danger:       #dc2626;
+  --warn:         #d97706;
+  --radius:       6px;
+  --shadow:       0 1px 4px rgba(46,48,146,.10);
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  font-family: "Hiragino Kaku Gothic ProN","Meiryo","Yu Gothic",sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  background: var(--primary);
+  color: #fff;
+  padding: .75rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+header h1 {
+  font-family: "Yu Mincho","HiraMinProN-W6","Times New Roman",serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: .2rem .65rem;
+  border-radius: 99px;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+.badge-running { background: #dcfce7; color: var(--success); }
+.badge-stopped { background: #fee2e2; color: var(--danger); }
+
+/* ── Main layout ── */
+main {
+  max-width: 1400px;
+  margin: 1.25rem auto;
+  padding: 0 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Panel ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem;
+}
+.panel h2 {
+  font-family: "Yu Mincho","HiraMinProN-W6",serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: .6rem;
+  padding-bottom: .35rem;
+  border-bottom: 2px solid var(--primary);
+}
+
+/* ── Load panel ── */
+.load-panel label {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: .3rem;
+}
+.load-row {
+  display: flex;
+  gap: .5rem;
+}
+.load-row input {
+  flex: 1;
+  padding: .45rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: "Courier New",Courier,monospace;
+  font-size: .9rem;
+  background: #fafafa;
+  transition: border-color .2s;
+}
+.load-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(46,48,146,.12);
+}
+.load-msg {
+  font-size: .83rem;
+  margin-top: .4rem;
+  min-height: 1.2em;
+}
+.load-ok    { color: var(--success); }
+.load-error { color: var(--danger); }
+
+/* ── Buttons ── */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  padding: .45rem .9rem;
+  transition: background .15s, opacity .15s, box-shadow .15s;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:not(:disabled):hover { box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+button:not(:disabled):active { transform: translateY(1px); box-shadow: none; }
+
+#btn-load       { background: var(--primary); color: #fff; min-width: 80px; }
+#btn-load:not(:disabled):hover { background: var(--primary-dark); }
+
+.btn-primary    { background: var(--primary); color: #fff; }
+.btn-primary:not(:disabled):hover { background: var(--primary-dark); }
+
+.btn-secondary  { background: #4f5487; color: #fff; }
+.btn-secondary:not(:disabled):hover { background: #3d4070; }
+
+#btn-run        { background: var(--success); color: #fff; }
+#btn-run:not(:disabled):hover { background: #15803d; }
+
+#btn-var        { background: #0891b2; color: #fff; }
+#btn-var:not(:disabled):hover { background: #0e7490; }
+
+#btn-dag        { background: #7c3aed; color: #fff; }
+#btn-dag:not(:disabled):hover { background: #6d28d9; }
+
+#btn-deldag     { background: var(--danger); color: #fff; }
+#btn-deldag:not(:disabled):hover { background: #b91c1c; }
+
+.btn-small {
+  font-size: .78rem;
+  padding: .25rem .6rem;
+  background: var(--border);
+  color: var(--text-muted);
+}
+.btn-small:hover { background: #c8cee0; }
+
+/* ── Controls panel ── */
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+.phase-row {
+  margin-top: .6rem;
+  font-size: .85rem;
+  color: var(--text-muted);
+}
+.phase-tag {
+  display: inline-block;
+  padding: .1rem .5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: .83rem;
+}
+.phase-fwd  { background: #dbeafe; color: #1d4ed8; }
+.phase-bwd  { background: #fce7f3; color: #be185d; }
+.phase-stop { background: #f3f4f6; color: #6b7280; }
+.running-tag { font-weight: 600; }
+
+/* ── Split area ── */
+.split-area {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 860px) {
+  .split-area { grid-template-columns: 1fr; }
+}
+
+/* ── Source panel ── */
+.source-filename {
+  font-family: "Courier New",Courier,monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-bottom: .5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.source-view {
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: "Courier New",Courier,monospace;
+  font-size: .83rem;
+  line-height: 1.6;
+  padding: .85rem 1rem;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 420px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* ── Variables panel ── */
+.vars-view {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.vars-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+  margin-bottom: .85rem;
+}
+.vars-table th {
+  background: var(--primary);
+  color: #fff;
+  text-align: left;
+  padding: .35rem .6rem;
+  font-weight: 600;
+}
+.vars-table td { padding: .3rem .6rem; border-bottom: 1px solid var(--border); }
+.vars-table tr:last-child td { border-bottom: none; }
+.vars-table tr:hover td { background: #f0f2ff; }
+.var-name { font-family: "Courier New",Courier,monospace; color: var(--primary-dark); font-weight: 600; }
+.var-addr { font-family: "Courier New",Courier,monospace; color: var(--text-muted); font-size: .8rem; }
+.var-val  { font-family: "Courier New",Courier,monospace; font-weight: 700; color: var(--success); }
+
+.heap-section { margin-top: .5rem; }
+.heap-section strong { font-size: .88rem; color: var(--primary); display: block; margin-bottom: .4rem; }
+.heap-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.heap-cell {
+  background: #f0f2ff;
+  border: 1px solid #c7caee;
+  border-radius: 4px;
+  padding: .25rem .5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 56px;
+}
+.heap-idx { font-size: .72rem; color: var(--text-muted); font-family: "Courier New",Courier,monospace; }
+.heap-val { font-size: .95rem; font-weight: 700; color: var(--primary-dark); font-family: "Courier New",Courier,monospace; }
+
+/* ── Output panel ── */
+.output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
+}
+.output-header h2 { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+.output-log {
+  background: #0d1117;
+  color: #7ee787;
+  font-family: "Courier New",Courier,monospace;
+  font-size: .83rem;
+  line-height: 1.55;
+  padding: .85rem 1rem;
+  border-radius: 4px;
+  overflow-y: auto;
+  max-height: 240px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Placeholder text ── */
+.placeholder { color: var(--text-muted); font-style: italic; font-size: .9rem; }
