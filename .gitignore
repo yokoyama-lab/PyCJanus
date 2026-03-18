@@ -27,6 +27,10 @@ CLAUDE.md
 *comparison.md
 再現実験手順書.md
 
+# Presentation slides (never push)
+*.pdf
+ipsjpro25-03-7-kuroda.pdf
+
 # Non-Python
 *.go
 go.mod
