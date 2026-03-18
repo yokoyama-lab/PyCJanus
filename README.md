@@ -1,140 +1,123 @@
-# PyCJanus
+# PyCJanus (Python版 CJanus 処理系)
 
-A Python implementation of **Concurrent Janus** (CJanus) — a concurrent, reversible imperative programming language.
+PyCJanusは、並行・可逆な命令型プログラミング言語 **Concurrent Janus** (CJanus) のPython実装です。
 
-CJanus is a concurrent extension of the reversible language Janus.
-This repository provides a Python port of the Go reference runtime, together with analysis tools.
+CJanusは、可逆言語Janusを並行拡張した言語です。本リポジトリは、Go言語によるリファレンス実装をPythonに移植したもので、研究室内の演習やデバッグ、動作解析のために作成されました。
 
-## Features
+## 主な機能
 
-- **Full CRL interpreter** — parses and executes CRL (Concurrent Reversible Language) intermediate programs
-- **Three execution modes** — Forward, Backward (reversible undo), and Replay (deterministic re-execution)
-- **Annotation DAG** — tracks execution history to enable correct reversal of concurrent programs
-- **Distributed locking** — `lock`/`unlock` semaphore instructions for shared-variable concurrency
-- **`-metrics` flag** — per-phase block counts, retry counts, peak thread count, and wait times
-- **Web debugger** — browser-based step debugger (`debugger/app.py`)
-- **Static linter** — structural checks for CRL programs (`tools/linter.py`)
-- **DAG visualizer** — exports the Annotation DAG to Graphviz DOT format (`tools/dag_visualize.py`)
+- **CRLインタプリタ** — CJanusの中間言語である CRL (Concurrent Reversible Language) プログラムを解釈・実行します。
+- **3つの実行モード** — 順実行 (Forward)、逆実行 (Backward/Undo)、および決定論的再実行 (Replay) をサポートします。
+- **アノテーションDAG** — 並行実行の履歴を管理し、並行プログラムの正しい逆実行を実現します。
+- **排他制御** — セマフォを用いた `lock`/`unlock` 命令による共有変数の保護をサポートします。
+- **メトリクス計測** — `-metrics` フラグにより、実行ステップ数、リトライ回数、最大スレッド数、待機時間などを表示します。
+- **Webデバッガ** — ブラウザ上で動作するステップ実行デバッガ (`debugger/app.py`) を提供します。
+- **静的リンター** — CRLプログラムの構造的な正当性（対称性など）を確認します (`tools/linter.py`)。
+- **DAG可視化** — アノテーションDAGをGraphviz形式で出力し、依存関係を可視化できます (`tools/dag_visualize.py`)。
 
-## Requirements
+## 動作環境
 
-- Python 3.10 or later
+- Python 3.10 以上
 - [lark](https://github.com/lark-parser/lark) (`pip install lark`)
-- Flask (only for the web debugger — `pip install flask`)
+- Flask (Webデバッガを使用する場合のみ — `pip install flask`)
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
-## Quick start
+## 使い方 (演習用)
 
-CRL programs are the intermediate language of CJanus.
-Sample programs are available in the [CJanus-IPSJPRO25-3](https://github.com/yokoyama-lab/CJanus-IPSJPRO25-3) repository.
+CRLプログラムは、CJanusコンパイラが出力する中間言語です。
+サンプルプログラムは、[CJanus-IPSJPRO25-3](https://github.com/yokoyama-lab/CJanus-IPSJPRO25-3) リポジトリの `progs/` ディレクトリにあります。
 
 ```bash
-# forward execution
+# 基本的な順実行
 python3 main.py path/to/fib.crl
 
-# forward + backward + replay (auto mode), suppress verbose output, show timing
+# 順実行 → 逆実行 → 再実行 を自動で行い、実行時間を表示
 python3 main.py path/to/fib.crl -v=false -auto -t
 
-# collect execution metrics
+# 詳細な実行統計を表示
 python3 main.py path/to/fib.crl -v=false -auto -t -metrics
 ```
 
-## Command-line options
+## 主要なコマンドラインオプション
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-v=false` | verbose on | Suppress per-block output |
-| `-auto` | off | Run forward → backward → replay automatically |
-| `-t` | off | Print elapsed time for each phase |
-| `-metrics` | off | Print block/retry/thread statistics |
-| `-procs N` | 1 | Number of worker threads (note: Python GIL limits true parallelism) |
-| `-execdebug` | off | Verify that backward execution exactly reverses forward |
-| `-silent` | off | Suppress block execution output |
+| フラグ | デフォルト | 内容 |
+|--------|------------|------|
+| `-v=false` | verbose ON | 各基本ブロックの実行ログを非表示にする |
+| `-auto` | OFF | 順実行・逆実行・再実行を連続して自動実行する |
+| `-t` | OFF | 各フェーズの実行時間を表示する |
+| `-metrics` | OFF | ステップ数、リトライ回数、スレッド統計を表示する |
+| `-procs N` | 1 | ワーカースレッド数を指定 (PythonのGILにより並列性能は制限されます) |
+| `-execdebug` | OFF | 逆実行が順実行を正しく戻しているか厳密に検証する |
+| `-silent` | OFF | 実行ログを一切出力しない |
 
-## Repository layout
+## ディレクトリ構成
 
 ```
 PyCJanus/
-├── main.py                  # entry point
+├── main.py                  # エントリポイント
 ├── runtime/
-│   ├── runtime.py           # top-level runtime, CRL loader, phase controller
-│   ├── pc.py                # program counter and block execution
-│   ├── dag.py               # Annotation DAG (write/read nodes, locking)
-│   ├── instset.py           # CRL instruction set
-│   ├── symtab.py            # symbol table
-│   ├── label.py             # label resolution
-│   ├── expr.py              # expression evaluator
-│   ├── config.py            # runtime configuration flags
-│   └── metrics.py           # execution metrics collector
+│   ├── runtime.py           # ランタイム本体、CRLローダー、実行制御
+│   ├── pc.py                # プログラムカウンタ、基本ブロック実行
+│   ├── dag.py               # アノテーションDAG（依存関係、ロック管理）
+│   ├── instset.py           # CRL命令セットの定義
+│   ├── symtab.py            # シンボルテーブル
+│   ├── label.py             # ラベル解決
+│   ├── expr.py              # 式評価器
+│   ├── config.py            # 設定フラグ管理
+│   └── metrics.py           # 実行統計コレクタ
 ├── tools/
-│   ├── linter.py            # CRL static linter
-│   ├── dag_visualize.py     # Annotation DAG → Graphviz DOT exporter
-│   └── gen_fib.py           # fib(n) CRL program generator
+│   ├── linter.py            # CRL静的リンター
+│   ├── dag_visualize.py     # アノテーションDAG → Graphviz出力
+│   └── gen_fib.py           # fib(n) プログラム生成ツール
 ├── debugger/
-│   ├── app.py               # Flask web debugger
-│   └── templates/index.html # debugger UI
+│   ├── app.py               # FlaskベースのWebデバッガ
+│   └── templates/index.html # デバッガUI
 ├── runtime_mp/
-│   ├── runtime_mp.py        # multiprocessing variant (experimental)
-│   └── benchmark_nogil.py   # GIL / no-GIL scaling benchmark
-└── benchmark_py.sh          # Python benchmark script
+│   ├── runtime_mp.py        # マルチプロセス版（実験的）
+│   └── benchmark_nogil.py   # GIL/no-GIL性能ベンチマーク
+└── benchmark_py.sh          # Python版ベンチマークスクリプト
 ```
 
-## Web debugger
+## Webデバッガの起動
+
+ブラウザを使用して、プログラムの実行を1ステップずつ追跡できます。
 
 ```bash
 pip install flask
 python3 debugger/app.py --port 5000 --file path/to/program.crl
-# open http://localhost:5000
+# http://localhost:5000 を開く
 ```
 
-## Tools
+## ツール群
 
-### CRL linter
+### CRLリンター
+プログラムの構造的な誤り（ラベルの対応、スタックの整合性、対称性など）をチェックします。
 
 ```bash
 python3 tools/linter.py path/to/program.crl
 ```
 
-Checks begin/end pairs, goto/comefrom symmetry, call target existence, push/pop balance, lock/unlock balance, and set/unset balance.
-
-### DAG visualizer
+### DAG可視化ツール
+実行後に生成されたアノテーションDAGを画像化し、プロセス間の依存関係を確認できます。
 
 ```python
 from tools.dag_visualize import dump_dag
-# after executing a runtime instance `rt`:
+# ランタイムインスタンス rt の実行後:
 dump_dag(rt, "output.dot")
-# render: dot -Tsvg output.dot -o dag.svg
+# 変換: dot -Tsvg output.dot -o dag.svg
 ```
 
-### fib(n) generator
+## 背景
 
-```bash
-# generate fib12.crl
-python3 tools/gen_fib.py 12
+**Janus** は、可逆な命令型プログラミング言語です。
+**CJanus** は、Janusに並行手続呼出し (`call p, q`) と分散ロックを導入し、
+アノテーションDAGを用いることで、並行プログラムの順実行と逆実行を可能にした言語です。
 
-# generate scaling set: n = 5, 7, 10, 12, 15, 18, 20
-python3 tools/gen_fib.py --scaling
-```
+本実装は、南山大学 **横山研究室** における研究および教育の一環として開発されました。
 
-Set the environment variable `CJANUS_PROGS` to point to a directory containing `fib.crl` as the template:
+## ライセンス
 
-```bash
-export CJANUS_PROGS=/path/to/CJanus-IPSJPRO25-3/progs
-python3 tools/gen_fib.py --scaling
-```
-
-## Background
-
-**Janus** is a reversible imperative programming language.
-**CJanus** extends Janus with concurrent procedure calls (`call p, q`) and distributed locking,
-enabling both forward and backward execution of concurrent programs via an Annotation DAG.
-
-This Python port was developed for research and educational purposes at the
-[Yokoyama Laboratory](https://yokoyama-lab.org/), Nanzan University.
-
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
+MITライセンス。詳細は [LICENSE](LICENSE) を参照してください。
