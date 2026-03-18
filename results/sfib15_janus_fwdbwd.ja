@@ -1,0 +1,25 @@
+procedure sfib(int n, int r)
+    if n <= 2 then
+        r += 1
+    else
+        local int ln = n - 1
+        local int mn = n - 2
+        local int l = 0
+        local int m = 0
+        call sfib(ln, l)
+        call sfib(mn, m)
+        r += l + m
+        uncall sfib(mn, m)
+        uncall sfib(ln, l)
+        delocal int m = 0
+        delocal int l = 0
+        delocal int mn = n - 2
+        delocal int ln = n - 1
+    fi n <= 2
+
+procedure main()
+    int n
+    int r
+    n += 15
+    call sfib(n, r)
+    uncall sfib(n, r)

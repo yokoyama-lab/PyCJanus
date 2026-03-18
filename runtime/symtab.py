@@ -142,9 +142,15 @@ class Symtab:
     def write_addr(self, a: Addr, val: int, p: "PC") -> None:
         from .config import cfg
         mem = self.get_mem(a.is_global)
+        watched = getattr(self, 'watched_vars', set())
+        do_watch = bool(watched) and a.sym in watched
+        if do_watch:
+            old = mem.get(a.idx)
         mem.set(a.idx, val)
         if cfg.var_debug:
             print(f"WriteOp: {a} -> {val}")
+        if do_watch:
+            print(f"[WATCH] {a.sym}({a}) : {old} -> {val}")
 
     def read_sym(self, s: str, p: "PC") -> int:
         adr = self.get_addr(s, p)

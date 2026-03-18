@@ -7,6 +7,7 @@ import queue
 import re
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from typing import Optional
 
@@ -53,6 +54,12 @@ class Runtime(Symtab):
         self.skiplock: int = 0
         self._pidctr = 0
         self._pidctr_lock = threading.Lock()
+
+        # Debugger extensions
+        self.watched_vars: set[str] = set()
+        self.breakpoints: set[int] = set()
+        self.trace_log: deque = deque(maxlen=1000)
+        self._trace_lock = threading.Lock()
 
     def _next_pid(self) -> int:
         with self._pidctr_lock:
@@ -423,6 +430,74 @@ class Runtime(Symtab):
                 elif s == "deldag\n":
                     self.reset_dag()
                     print("Debug >> Annotation DAG deleted")
+                elif s == "step\n":
+                    cfg.step_mode = True
+                    self._start_execution(self.rev)
+                    running = RUN_RUNNING
+                elif s == "ps\n":
+                    procs: list = []
+                    if self.rootpc:
+                        self.rootpc.propagate(lambda p: procs.append(p))
+                    print(f"{'PID':>5}  {'PC':>5}  {'HEAD':>6}  {'EXEC':>5}  {'NEST':>4}  LINE")
+                    for p in sorted(procs, key=lambda p: p.pid):
+                        ln = self.file[p.head] if 0 <= p.head < len(self.file) else "?"
+                        print(f"{p.pid:>5}  {p.pc:>5}  {p.head:>6}  {str(p.executing):>5}  {p.nest:>4}  {ln!r}")
+                elif s.startswith("watch "):
+                    var = s[len("watch "):].strip()
+                    if var:
+                        self.watched_vars.add(var)
+                        print(f"Debug >> Watching: {var}")
+                    else:
+                        print("Debug >> watch: missing variable name")
+                elif s.startswith("unwatch "):
+                    var = s[len("unwatch "):].strip()
+                    self.watched_vars.discard(var)
+                    print(f"Debug >> Unwatched: {var}")
+                elif s.startswith("break "):
+                    target = s[len("break "):].strip()
+                    try:
+                        lineno = int(target)
+                    except ValueError:
+                        try:
+                            lineno = self.labels.get_begin(target)
+                        except KeyError:
+                            print(f"Debug >> Unknown label: {target}")
+                            continue
+                    self.breakpoints.add(lineno)
+                    print(f"Debug >> Breakpoint set at line {lineno}")
+                elif s.startswith("unbreak "):
+                    target = s[len("unbreak "):].strip()
+                    try:
+                        lineno = int(target)
+                    except ValueError:
+                        try:
+                            lineno = self.labels.get_begin(target)
+                        except KeyError:
+                            print(f"Debug >> Unknown label: {target}")
+                            continue
+                    self.breakpoints.discard(lineno)
+                    print(f"Debug >> Breakpoint removed at line {lineno}")
+                elif s == "breaks\n":
+                    if not self.breakpoints:
+                        print("Debug >> No breakpoints set")
+                    else:
+                        for bp in sorted(self.breakpoints):
+                            ln = self.file[bp] if 0 <= bp < len(self.file) else "?"
+                            print(f"  line {bp}: {ln!r}")
+                elif s.startswith("trace"):
+                    parts = s.strip().split()
+                    n = int(parts[1]) if len(parts) > 1 else 20
+                    if not cfg.trace_cli:
+                        cfg.trace_cli = True
+                        print("Debug >> Trace enabled (future blocks will be recorded)")
+                    with self._trace_lock:
+                        entries = list(self.trace_log)[-n:]
+                    if not entries:
+                        print("Debug >> No trace entries yet")
+                    else:
+                        for e in entries:
+                            dir_s = "bwd" if e["rev"] else "fwd"
+                            print(f"  P{e['pid']},pc={e['pc']},h={e['head']} [{dir_s}] {e['insts']}")
                 else:
                     m = focus_re.match(s)
                     if m:

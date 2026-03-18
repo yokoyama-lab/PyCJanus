@@ -1,0 +1,24 @@
+// Sequential Fibonacci (sfib) - accurate CJanus equivalent
+// In CJanus sfib.cj: local int l=n-1, local int m=n-2 are indices passed to sfib
+// sfib(n, r): n is the index (unchanged), r accumulates fib value
+// After call sfib(l, r): l is still n-1 because sfib doesn't modify its n parameter!
+// Therefore delocal int l = n-1 is valid
+
+procedure sfib(int n, int r)
+    if n <= 2 then
+        r += 1
+    else
+        local int l = n - 1
+        local int m = n - 2
+        call sfib(l, r)
+        call sfib(m, r)
+        delocal int m = n - 2
+        delocal int l = n - 1
+    fi n <= 2
+
+procedure main()
+    int n
+    int r
+    n += 10
+    call sfib(n, r)
+    printf("sfib(%d) = %d\n", n, r)

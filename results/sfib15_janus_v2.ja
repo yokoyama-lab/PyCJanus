@@ -1,0 +1,18 @@
+procedure sfib(int n, int r)
+    if n <= 2 then
+        r += 1
+    else
+        local int l = n - 1
+        local int m = n - 2
+        call sfib(l, r)
+        call sfib(m, r)
+        delocal int m = n - 2
+        delocal int l = n - 1
+    fi n <= 2
+
+procedure main()
+    int n
+    int r
+    n += 15
+    call sfib(n, r)
+    printf("sfib(%d) = %d\n", n, r)

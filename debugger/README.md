@@ -5,7 +5,7 @@
 ## 起動方法
 
 ```bash
-cd /path/to/PyCJanus
+cd /home/a/myclaude/cjanus/cjanus_py
 
 # デフォルト (ポート 5000)
 python3 debugger/app.py

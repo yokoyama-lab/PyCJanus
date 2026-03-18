@@ -22,6 +22,7 @@ Options:
     -nodag          Disable annotation DAG
     -extexpr        Allow extended expressions
     -metrics        Collect and display runtime metrics
+    -trace          Record block execution history (for trace command)
 """
 from __future__ import annotations
 import queue
@@ -76,6 +77,8 @@ def parse_args(args: list[str]) -> tuple[str, dict]:
             cfg.ext_expr = True
         elif a == "-metrics":
             cfg.metrics = True
+        elif a == "-trace":
+            cfg.trace_cli = True
         else:
             print(f"Unknown option: {a}")
             sys.exit(1)

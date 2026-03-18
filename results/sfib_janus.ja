@@ -1,0 +1,39 @@
+// Sequential Fibonacci (sfib) in Jana-style Janus
+// Equivalent to sfib.cj / sfib.crl in CJanus
+// sfib(n, r): r += fib(n), where r must be 0 on entry
+// fib(1)=1, fib(2)=1, fib(3)=2, ..., fib(10)=55
+//
+// Reversible approach:
+//   - compute l = fib(n-1) via call sfib(ln, l)
+//   - compute m = fib(n-2) via call sfib(mn, m)
+//   - set r += l + m
+//   - uncall sfib(mn, m) to restore m=0  => then delocal int m = 0
+//   - uncall sfib(ln, l) to restore l=0  => then delocal int l = 0
+//   But this requires r+= l+m before uncalling, and uncall will not
+//   disturb r (it's not passed). So r remains correct after uncalls.
+
+procedure sfib(int n, int r)
+    if n <= 2 then
+        r += 1
+    else
+        local int ln = n - 1
+        local int mn = n - 2
+        local int l = 0
+        local int m = 0
+        call sfib(ln, l)
+        call sfib(mn, m)
+        r += l + m
+        uncall sfib(mn, m)
+        uncall sfib(ln, l)
+        delocal int m = 0
+        delocal int l = 0
+        delocal int mn = n - 2
+        delocal int ln = n - 1
+    fi n <= 2
+
+procedure main()
+    int n
+    int r
+    n += 10
+    call sfib(n, r)
+    printf("sfib(%d) = %d\n", n, r)

@@ -1,9 +1,8 @@
 #!/bin/bash
 # Python版の計測スクリプト
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+cd /home/a/myclaude/cjanus/cjanus_py
 PYRUNTIME="python3 main.py"
-PROGS="${CJANUS_PROGS:-../CJanus-IPSJPRO25-3/progs}"
+PROGS="../CJanus-IPSJPRO25-3/progs"
 TRIALS=3
 
 median_of() {

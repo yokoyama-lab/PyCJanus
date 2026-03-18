@@ -71,6 +71,14 @@ class DagNode:
         self.lockerid: int = 0
         self.lockcount: int = 0
 
+    def __getstate__(self):
+        return {"lockerid": self.lockerid, "lockcount": self.lockcount}
+
+    def __setstate__(self, state):
+        self._sem = threading.Semaphore(1)
+        self.lockerid = state["lockerid"]
+        self.lockcount = state["lockcount"]
+
     def _do_lock_node(self, p: "PC") -> None:
         from .config import cfg
         if cfg.dag_lock_debug:
@@ -129,6 +137,20 @@ class DagWNode(DagNode):
         self.node: Optional[DagPNode] = None
         self.read: Optional[DagRNode] = None
 
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.update({"head": self.head, "prev": self.prev, "next": self.next,
+                       "node": self.node, "read": self.read})
+        return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.head = state["head"]
+        self.prev = state["prev"]
+        self.next = state["next"]
+        self.node = state["node"]
+        self.read = state["read"]
+
 
 class DagRNode(DagNode):
     """Read node in the annotation DAG."""
@@ -139,6 +161,17 @@ class DagRNode(DagNode):
         self.head: Optional[DagWNode] = None
         self.node: Optional[DagPNode] = None
         self.next: Optional[DagRNode] = None
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.update({"head": self.head, "node": self.node, "next": self.next})
+        return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.head = state["head"]
+        self.node = state["node"]
+        self.next = state["next"]
 
 
 class DagPNode(DagNode):
@@ -154,6 +187,22 @@ class DagPNode(DagNode):
         self.wt: Optional[DagWNode] = None
         self.rd: Optional[DagPRNode] = None
 
+    def __getstate__(self):
+        state = super().__getstate__()
+        # proc (PC) is not picklable (contains lambdas); restore as None in child
+        state.update({"proc": None, "prev": self.prev, "next": self.next,
+                       "pc": self.pc, "wt": self.wt, "rd": self.rd})
+        return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.proc = state["proc"]
+        self.prev = state["prev"]
+        self.next = state["next"]
+        self.pc   = state["pc"]
+        self.wt   = state["wt"]
+        self.rd   = state["rd"]
+
 
 class DagPRNode(DagNode):
     """Links a process node to its read nodes."""
@@ -163,6 +212,16 @@ class DagPRNode(DagNode):
         super().__init__()
         self.node: Optional[DagRNode] = None
         self.next: Optional[DagPRNode] = None
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.update({"node": self.node, "next": self.next})
+        return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.node = state["node"]
+        self.next = state["next"]
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +243,19 @@ class DagEntry(DagNode):
         self._wlocked = False
         tail = DagWNode(self)
         self.tail: DagWNode = tail
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.update({"_rcount": self._rcount, "_wlocked": self._wlocked,
+                       "tail": self.tail})
+        return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._meta_lock = threading.Lock()
+        self._rcount  = state["_rcount"]
+        self._wlocked = state["_wlocked"]
+        self.tail     = state["tail"]
 
     def r_lock(self) -> None:
         with self._meta_lock:
@@ -244,6 +316,13 @@ class MAddr:
 class DAG:
     def __init__(self):
         self.entries: dict[MAddr, DagEntry] = {}
+        self._entrylock = threading.Lock()
+
+    def __getstate__(self):
+        return {"entries": self.entries}
+
+    def __setstate__(self, state):
+        self.entries = state["entries"]
         self._entrylock = threading.Lock()
 
     def get_entry(self, a: "Addr") -> DagEntry:

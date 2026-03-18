@@ -14,3 +14,23 @@ trace.out
 a.prof
 benchmark_results.json
 *_raw.txt
+
+# AI Tools and logs
+CLAUDE.md
+.claude/
+.cursor/
+.gemini/
+.geminiignore
+*TODO.md
+*todo.md
+*analysis.md
+*comparison.md
+再現実験手順書.md
+
+# Non-Python
+*.go
+go.mod
+go.sum
+go.work
+go.work.sum
+benchmark_go.sh

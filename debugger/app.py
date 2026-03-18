@@ -1,7 +1,7 @@
 """CJanus Web Debugger — Flask application.
 
 Usage:
-    cd /path/to/PyCJanus
+    cd /home/a/myclaude/cjanus/cjanus_py
     python3 debugger/app.py [--port PORT] [--file FILE]
 
     python3 debugger/app.py
@@ -116,6 +116,8 @@ def _reset_cfg():
     cfg.max_procs = 0
     cfg.auto = False
     cfg.auto_progress = 0
+    cfg.step_mode = False
+    cfg.trace_cli = False
 
 
 def _load_runtime(filepath: str) -> str | None:
@@ -221,7 +223,7 @@ def _send_command(cmd: str) -> dict:
             runtime_state["phase"] = "forward"
         elif cmd == "bwd":
             runtime_state["phase"] = "backward"
-        elif cmd == "run":
+        elif cmd in ("run", "step"):
             runtime_state["running"] = True
 
         debugsym.put(cmd + "\n")
@@ -260,11 +262,15 @@ def load():
 def command():
     data = request.get_json(force=True, silent=True) or {}
     cmd = data.get("cmd", "").strip()
-    valid = {"run", "fwd", "bwd", "var", "dag", "deldag"}
-    if cmd not in valid:
+    arg = data.get("arg", "").strip()
+
+    valid_no_arg = {"run", "fwd", "bwd", "var", "dag", "deldag", "step", "ps", "breaks"}
+    valid_with_arg = {"watch", "unwatch", "break", "unbreak", "trace", "focus"}
+    if cmd not in valid_no_arg and cmd not in valid_with_arg:
         return jsonify({"ok": False, "error": f"Unknown command: {cmd}"}), 400
 
-    result = _send_command(cmd)
+    cmd_str = f"{cmd} {arg}".strip() if arg else cmd
+    result = _send_command(cmd_str)
     if not result["ok"]:
         return jsonify(result), 400
     return jsonify(result)
@@ -357,6 +363,51 @@ def vars_endpoint():
         "heap": heap_values,
         "vars": alloc_table,
     })
+
+
+@app.route("/processes")
+def processes():
+    """Return all live process states as JSON."""
+    r: Runtime | None = runtime_state.get("runtime")
+    if r is None:
+        return jsonify({"ok": False, "error": "No runtime"}), 400
+    procs: list = []
+    if r.rootpc:
+        r.rootpc.propagate(lambda p: procs.append({
+            "pid": p.pid,
+            "pc": p.pc,
+            "head": p.head,
+            "executing": p.executing,
+            "nest": p.nest,
+            "line": r.file[p.head] if 0 <= p.head < len(r.file) else "?",
+        }))
+    return jsonify({"ok": True, "processes": sorted(procs, key=lambda p: p["pid"])})
+
+
+@app.route("/breakpoints", methods=["GET", "POST", "DELETE"])
+def breakpoints_endpoint():
+    """GET: list breakpoints. POST: set breakpoint {target}. DELETE: remove breakpoint {target}."""
+    r: Runtime | None = runtime_state.get("runtime")
+    if r is None:
+        return jsonify({"ok": False, "error": "No runtime"}), 400
+
+    if request.method == "GET":
+        bps = []
+        for bp in sorted(r.breakpoints):
+            ln = r.file[bp] if 0 <= bp < len(r.file) else "?"
+            bps.append({"line": bp, "content": ln})
+        return jsonify({"ok": True, "breakpoints": bps})
+
+    data = request.get_json(force=True, silent=True) or {}
+    target = str(data.get("target", "")).strip()
+    if not target:
+        return jsonify({"ok": False, "error": "Missing 'target' parameter"}), 400
+
+    if request.method == "POST":
+        result = _send_command(f"break {target}")
+    else:  # DELETE
+        result = _send_command(f"unbreak {target}")
+    return jsonify(result)
 
 
 @app.route("/source")

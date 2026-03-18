@@ -34,6 +34,10 @@ class Config:
     # Metrics
     metrics: bool = False          # collect and display runtime metrics
 
+    # Debugger extensions
+    step_mode: bool = False        # stop after next 1 block
+    trace_cli: bool = False        # record block execution history
+
 
 # Global config instance
 cfg = Config()

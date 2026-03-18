@@ -38,6 +38,8 @@
               title="逆方向モードにして実行">&#9664; Backward</button>
       <button id="btn-run" onclick="sendCmd('run')"
               title="現在の方向で実行">&#9193; Run</button>
+      <button id="btn-step" onclick="sendCmd('step')"
+              title="1ブロック実行して停止">&#9654;&#9654; Step</button>
       <button id="btn-var" onclick="refreshVars()"
               title="変数を更新">&#128196; Vars</button>
       <button id="btn-dag" onclick="sendCmd('dag')"
@@ -72,6 +74,34 @@
 
   </div>
 
+  <!-- ── Breakpoints & Watch ── -->
+  <div class="split-area">
+
+    <!-- Breakpoints panel -->
+    <section class="panel bp-panel">
+      <h2>ブレークポイント</h2>
+      <div class="bp-input-row">
+        <input id="bp-input" type="text" placeholder="ラベル名 or 行番号" spellcheck="false" />
+        <button onclick="setBreakpoint()">Set</button>
+        <button onclick="delBreakpoint()" class="btn-secondary">Del</button>
+        <button onclick="refreshBreakpoints()" class="btn-small">一覧更新</button>
+      </div>
+      <div id="bp-list" class="bp-list"><span class="placeholder">ブレークポイントなし</span></div>
+    </section>
+
+    <!-- Watch panel -->
+    <section class="panel watch-panel">
+      <h2>変数ウォッチ</h2>
+      <div class="watch-input-row">
+        <input id="watch-input" type="text" placeholder="変数名" spellcheck="false" />
+        <button onclick="addWatch()">Watch</button>
+        <button onclick="removeWatch()" class="btn-secondary">Unwatch</button>
+      </div>
+      <div id="watch-list" class="watch-list"><span class="placeholder">ウォッチ変数なし</span></div>
+    </section>
+
+  </div>
+
   <!-- ── Output log ── -->
   <section class="panel output-panel">
     <div class="output-header">
@@ -94,7 +124,7 @@ let lastOutputLength = 0;
 // Helpers
 // ─────────────────────────────────────────────
 function setButtonsDisabled(disabled) {
-  ['btn-fwd','btn-bwd','btn-run','btn-var','btn-dag','btn-deldag'].forEach(id => {
+  ['btn-fwd','btn-bwd','btn-run','btn-step','btn-var','btn-dag','btn-deldag'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = disabled;
   });
@@ -162,12 +192,13 @@ async function sendCmd(cmd) {
   await _sendOne(cmd);
 }
 
-async function _sendOne(cmd) {
+async function _sendOne(cmd, arg) {
   try {
+    const body = arg !== undefined ? {cmd, arg} : {cmd};
     const res = await fetch('/command', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({cmd})
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     if (!data.ok) {
@@ -295,6 +326,78 @@ async function refreshVars() {
   } catch(e) {
     container.innerHTML = '<p class="placeholder">エラー: ' + e.message + '</p>';
   }
+}
+
+// ─────────────────────────────────────────────
+// Breakpoints
+// ─────────────────────────────────────────────
+async function setBreakpoint() {
+  const target = document.getElementById('bp-input').value.trim();
+  if (!target) return;
+  await fetch('/breakpoints', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target})
+  });
+  await refreshBreakpoints();
+}
+
+async function delBreakpoint() {
+  const target = document.getElementById('bp-input').value.trim();
+  if (!target) return;
+  await fetch('/breakpoints', {
+    method: 'DELETE',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target})
+  });
+  await refreshBreakpoints();
+}
+
+async function refreshBreakpoints() {
+  try {
+    const res = await fetch('/breakpoints');
+    const data = await res.json();
+    const el = document.getElementById('bp-list');
+    if (!data.ok || !data.breakpoints || !data.breakpoints.length) {
+      el.innerHTML = '<span class="placeholder">ブレークポイントなし</span>';
+      return;
+    }
+    el.innerHTML = data.breakpoints.map(bp =>
+      `<div class="bp-entry">line ${bp.line}: <code>${escHtml(bp.content)}</code></div>`
+    ).join('');
+  } catch(_) {}
+}
+
+// ─────────────────────────────────────────────
+// Watch
+// ─────────────────────────────────────────────
+const watchedVars = new Set();
+
+async function addWatch() {
+  const v = document.getElementById('watch-input').value.trim();
+  if (!v) return;
+  await _sendOne('watch', v);
+  watchedVars.add(v);
+  renderWatchList();
+}
+
+async function removeWatch() {
+  const v = document.getElementById('watch-input').value.trim();
+  if (!v) return;
+  await _sendOne('unwatch', v);
+  watchedVars.delete(v);
+  renderWatchList();
+}
+
+function renderWatchList() {
+  const el = document.getElementById('watch-list');
+  if (!watchedVars.size) {
+    el.innerHTML = '<span class="placeholder">ウォッチ変数なし</span>';
+    return;
+  }
+  el.innerHTML = [...watchedVars].map(v =>
+    `<div class="watch-entry"><code>${escHtml(v)}</code></div>`
+  ).join('');
 }
 
 function escHtml(s) {

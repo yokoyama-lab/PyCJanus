@@ -11,14 +11,12 @@ Examples:
     python3 tools/gen_fib.py --scaling     # generate n=5,7,10,12,15,18,20 for scaling experiment
 """
 
-import os
 import sys
 import re
 from pathlib import Path
 
-_HERE = Path(__file__).resolve().parent.parent
-TEMPLATE_PATH = Path(os.environ.get("CJANUS_PROGS", str(_HERE.parent / "CJanus-IPSJPRO25-3" / "progs"))) / "fib.crl"
-DEFAULT_OUTPUT_DIR = TEMPLATE_PATH.parent
+TEMPLATE_PATH = Path("/home/a/myclaude/cjanus/CJanus-IPSJPRO25-3/progs/fib.crl")
+DEFAULT_OUTPUT_DIR = Path("/home/a/myclaude/cjanus/CJanus-IPSJPRO25-3/progs")
 
 SCALING_VALUES = [5, 7, 10, 12, 15, 18, 20]
 

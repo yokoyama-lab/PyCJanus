@@ -1,2 +1,1 @@
 lark>=1.1.0
-flask>=3.0.0   # optional: only required for debugger/app.py

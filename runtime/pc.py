@@ -170,6 +170,10 @@ class PC:
             if cfg.slow_debug > 0:
                 time.sleep(cfg.slow_debug)
 
+            if cfg.step_mode:
+                cfg.step_mode = False
+                r.run_stop.set()
+
             if ret == EXR_EOF:
                 r.run_stop.set()
                 return 1
@@ -203,6 +207,11 @@ class PC:
         from .config import cfg
 
         self.executing = True
+        # Breakpoint check
+        if r.breakpoints and self.head in r.breakpoints:
+            ln = r.file[self.head] if 0 <= self.head < len(r.file) else "?"
+            print(f"\n[BREAK] P{self.pid} hit breakpoint at line {self.head}: {ln!r}")
+            r.run_stop.set()
         try:
             lines = r.file
             insts: list[str] = []
@@ -268,6 +277,13 @@ class PC:
                 print(" ".join(insts))
 
             dagf()
+
+            if cfg.trace_cli:
+                with r._trace_lock:
+                    r.trace_log.append({
+                        "pid": self.pid, "pc": self.pc, "head": self.head,
+                        "insts": " | ".join(insts), "rev": rev,
+                    })
 
             if cfg.exec_debug:
                 key = (self.pid, self.pc)

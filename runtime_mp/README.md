@@ -96,7 +96,7 @@ future work:
 ### ベンチマーク実行
 
 ```bash
-cd /path/to/PyCJanus
+cd /home/a/myclaude/cjanus/cjanus_py
 python3 runtime_mp/benchmark_nogil.py
 ```
 

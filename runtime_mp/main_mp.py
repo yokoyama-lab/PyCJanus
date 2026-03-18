@@ -3,7 +3,7 @@
 main_mp.py — CJanus multiprocessing runtime entry point.
 
 Usage:
-    cd /path/to/PyCJanus
+    cd /home/a/myclaude/cjanus/cjanus_py
     python3 runtime_mp/main_mp.py <file.crl> [options]
 
 Options (same as main.py plus):

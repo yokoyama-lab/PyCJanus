@@ -3,7 +3,7 @@
 benchmark_nogil.py — GIL detection and thread-scaling benchmark for CJanus.
 
 Usage:
-    cd /path/to/PyCJanus
+    cd /home/a/myclaude/cjanus/cjanus_py
     python3 runtime_mp/benchmark_nogil.py [--fib N] [--reps R] [--no-process]
 
 Options:
@@ -55,8 +55,7 @@ from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PY_DIR = SCRIPT_DIR.parent
-_default_progs = PY_DIR.parent / "CJanus-IPSJPRO25-3" / "progs"
-PROGS_DIR = Path(os.environ.get("CJANUS_PROGS", str(_default_progs)))
+PROGS_DIR = Path("/home/a/myclaude/cjanus/CJanus-IPSJPRO25-3/progs")
 
 
 def _fib_crl(n: int) -> Optional[Path]:
