@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    defaults:
+      run:
+        working-directory: PyCJanus
+    steps:
+      # tests/test_programs.py loads the CRL programs from a sibling checkout
+      # (../CJanus-IPSJPRO25-3/progs), as described in the README, so both
+      # repositories are checked out side by side under the workspace.
+      - uses: actions/checkout@v4
+        with:
+          path: PyCJanus
+
+      - name: Check out CJanus sample programs
+        uses: actions/checkout@v4
+        with:
+          repository: yokoyama-lab/CJanus-IPSJPRO25-3
+          path: CJanus-IPSJPRO25-3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Run tests
+        run: python -m pytest -q
